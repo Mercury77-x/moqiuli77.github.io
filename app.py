@@ -1,14 +1,15 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import google.generativeai as genai
+import requests  # 👈 改用 requests 库
+import json
 import os
 
-st.set_page_config(page_title="交易员诊所 (Flash版)", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="交易员诊所 (REST版)", page_icon="⚡", layout="wide")
 
 with st.sidebar:
     st.header("⚡ 交易员诊所")
-    st.caption("🚀 Powered by Gemini 1.5 Flash")
+    st.caption("🚀 Powered by Gemini 1.5 Flash (HTTP直连)")
     
     env_key = os.environ.get("GEMINI_API_KEY")
     if env_key:
@@ -18,7 +19,7 @@ with st.sidebar:
         api_key = st.text_input("请输入 Gemini Key", type="password")
 
 st.title("🚑 币圈交易诊所")
-st.markdown("支持 **币安/OKX/Bitget** (已启用 Gemini 1.5 Flash)")
+st.markdown("支持 **币安/OKX/Bitget** (已启用 Gemini 直连模式)")
 
 # --- 核心逻辑 ---
 def process_data(file):
@@ -62,28 +63,39 @@ def process_data(file):
         st.error(f"❌ 解析出错: {e}")
         return None
 
+# 🌟 重点修改：完全不依赖 Google SDK，手写请求 🌟
 def get_ai_comment(stats, key):
     if not key: return "请配置 Key。"
     
+    clean_key = key.strip()
+    # 直接访问 API 地址
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
+    
+    headers = {'Content-Type': 'application/json'}
+    
+    prompt_text = f"""
+    你是一位毒舌交易员教练。分析数据：
+    交易{stats['count']}笔，胜率{stats['win_rate']:.1f}%，净利{stats['net']}U，手续费{stats['fee']}U。
+    请毒舌点评，200字以内。
+    """
+    
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt_text}]
+        }]
+    }
+    
     try:
-        # 🌟 关键修改1：去除 Key 的首尾空格，防止复制错误
-        clean_key = key.strip()
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
         
-        genai.configure(api_key=clean_key)
-        
-        # 🌟 关键修改2：使用最新的 1.5 Flash 模型
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        prompt = f"""
-        你是一位毒舌交易员教练。分析数据：
-        交易{stats['count']}笔，胜率{stats['win_rate']:.1f}%，净利{stats['net']}U，手续费{stats['fee']}U。
-        请毒舌点评，200字以内。
-        """
-        
-        response = model.generate_content(prompt)
-        return response.text
+        if response.status_code == 200:
+            # 解析 Google 返回的 JSON
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        else:
+            return f"Gemini 报错 ({response.status_code}): {response.text}"
+            
     except Exception as e:
-        return f"Gemini 报错: {e}"
+        return f"网络请求报错: {e}"
 
 # --- 界面 ---
 uploaded_file = st.file_uploader("📂 拖入 CSV 文件", type=['csv'])
