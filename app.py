@@ -5,11 +5,11 @@ import requests
 import json
 import os
 
-st.set_page_config(page_title="交易员诊所 (调试版)", page_icon="🛠️", layout="wide")
+st.set_page_config(page_title="交易员诊所 (Gemini 2.5)", page_icon="⚡", layout="wide")
 
 with st.sidebar:
     st.header("⚡ 交易员诊所")
-    st.caption("🚀 Powered by Gemini (v1/v1beta)")
+    st.caption("🚀 Powered by Gemini 2.0/2.5")
     
     # 1. 获取 Key
     env_key = os.environ.get("GEMINI_API_KEY")
@@ -21,39 +21,25 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # 2. 模型选择 (包含 v1 和 v1beta 的变体)
+    # 🌟 关键修改：根据你刚才查到的名单，换成真实存在的模型名 🌟
+    # 优先推荐 2.5-flash (速度快、模型新)
     model_name = st.selectbox(
         "🔮 选择 AI 模型",
-        ["gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro", "gemini-1.5-pro"],
+        [
+            "gemini-2.5-flash", 
+            "gemini-2.0-flash", 
+            "gemini-2.0-flash-lite", 
+            "gemini-2.5-pro"
+        ],
         index=0
     )
     
-    st.markdown("---")
-    # 3. 🚨 新增：调试按钮
-    if st.button("🛠️ 调试：列出可用模型"):
-        if not api_key:
-            st.error("请先配置 Key")
-        else:
-            clean_key = api_key.strip()
-            # 直接问 Google 到底有哪些模型
-            url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_key}"
-            try:
-                r = requests.get(url, timeout=10)
-                if r.status_code == 200:
-                    data = r.json()
-                    st.sidebar.success("连接成功！可用模型如下：")
-                    # 提取并显示模型名称
-                    models = [m['name'] for m in data.get('models', [])]
-                    st.sidebar.json(models)
-                else:
-                    st.sidebar.error(f"连接失败 ({r.status_code}): {r.text}")
-            except Exception as e:
-                st.sidebar.error(f"网络错误: {e}")
+    st.info(f"当前选中: {model_name}")
 
 st.title("🚑 币圈交易诊所")
-st.markdown(f"当前尝试调用：**{model_name}**")
+st.markdown(f"当前使用的 AI 大脑：**{model_name}**")
 
-# --- 核心数据逻辑 ---
+# --- 核心数据逻辑 (保持不变) ---
 def process_data(file):
     try:
         df = pd.read_csv(file)
@@ -95,13 +81,13 @@ def process_data(file):
         st.error(f"❌ 解析出错: {e}")
         return None
 
-# --- AI 调用逻辑 (尝试 v1 接口) ---
+# --- AI 调用逻辑 (适配 v1beta) ---
 def get_ai_comment(stats, key, model):
     if not key: return "请配置 Key。"
     
     clean_key = key.strip()
     
-    # 🌟 关键修改：尝试使用 v1 接口而不是 v1beta，并且确保 content-type
+    # URL 结构： .../models/{模型名}:generateContent
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={clean_key}"
     
     headers = {'Content-Type': 'application/json'}
@@ -149,8 +135,10 @@ if uploaded_file:
         c3.metric("🎯 胜率", f"{stats['win_rate']:.1f}%")
         
         st.divider()
-        if st.button(f"开始 AI 诊断"):
-            with st.spinner("AI 正在思考..."):
+        
+        # 按钮动态显示当前模型
+        if st.button(f"开始 AI 诊断 ({model_name})"):
+            with st.spinner(f"{model_name} 正在思考..."):
                 st.info(get_ai_comment(stats, api_key, model_name))
         
         if 'Time' in df.columns:
