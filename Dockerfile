@@ -7,11 +7,11 @@ WORKDIR /app
 # 复制文件
 COPY . .
 
-# 安装依赖 (不使用缓存，保证安装最新版)
+# 安装依赖
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 暴露 Streamlit 默认端口
-EXPOSE 8501
+# 🌟 关键修改：告诉 Zeabur 我们用 8080
+EXPOSE 8080
 
-# 启动命令
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# 🌟 关键修改：强制 Streamlit 运行在 8080 端口
+CMD ["streamlit", "run", "app.py", "--server.port=8080", "--server.address=0.0.0.0"]
