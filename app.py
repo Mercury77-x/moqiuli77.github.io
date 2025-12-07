@@ -5,14 +5,13 @@ import google.generativeai as genai
 import os
 
 # --- 1. 页面配置 ---
-st.set_page_config(page_title="交易员诊所 (Gemini版)", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="交易员诊所 (Gemini Pro)", page_icon="⚡", layout="wide")
 
 # --- 2. 侧边栏 ---
 with st.sidebar:
     st.header("⚡ 交易员诊所")
-    st.caption("🚀 Powered by Gemini 1.5 Flash")
+    st.caption("🚀 Powered by Google Gemini Pro")
     
-    # 获取 Key (变量名改成 GEMINI_API_KEY)
     env_key = os.environ.get("GEMINI_API_KEY")
     if env_key:
         api_key = env_key
@@ -23,15 +22,12 @@ with st.sidebar:
 st.title("🚑 币圈交易诊所")
 st.markdown("支持 **币安/OKX/Bitget** 导出的 CSV 文件 (支持中文表头)")
 
-# --- 3. 核心数据逻辑 (保持之前的完美版) ---
+# --- 3. 核心数据逻辑 ---
 def process_data(file):
     try:
-        # 读取文件
         df = pd.read_csv(file)
-        # 统一列名：转小写、去空格
         df.columns = [str(c).strip().lower() for c in df.columns]
         
-        # 建立映射
         col_map = {
             'opened': 'Time', 'date(utc)': 'Time', 'time': 'Time', 'date': 'Time',
             'closed': 'Time_Close',
@@ -41,7 +37,7 @@ def process_data(file):
         }
         df = df.rename(columns=col_map)
         
-        # 模糊搜索 PnL
+        # 模糊搜索
         if 'PnL' not in df.columns:
             for col in df.columns:
                 if 'pnl' in col or 'profit' in col or '盈亏' in col:
@@ -75,10 +71,11 @@ def get_ai_comment(stats, key):
     if not key: return "请配置 Key。"
     
     try:
-        # --- Gemini 调用逻辑 ---
+        # 配置 Key
         genai.configure(api_key=key)
-        # 使用 Flash 模型，速度快且免费额度高
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # 🌟 关键修改：换回最稳的 'gemini-pro' 🌟
+        model = genai.GenerativeModel('gemini-pro')
         
         prompt = f"""
         你是一位毒舌交易员教练。请分析以下数据：
@@ -120,7 +117,7 @@ if uploaded_file:
         
         st.divider()
         
-        if st.button("开始 Gemini 诊断"):
+        if st.button("开始 AI 诊断"):
             with st.spinner("Gemini 正在思考..."):
                 st.info(get_ai_comment(stats, api_key))
         
