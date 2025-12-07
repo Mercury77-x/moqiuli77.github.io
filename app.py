@@ -1,27 +1,37 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import requests  # 👈 改用 requests 库
+import requests
 import json
 import os
 
-st.set_page_config(page_title="交易员诊所 (REST版)", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="交易员诊所 (自选模型版)", page_icon="⚡", layout="wide")
 
 with st.sidebar:
     st.header("⚡ 交易员诊所")
-    st.caption("🚀 Powered by Gemini 1.5 Flash (HTTP直连)")
+    st.caption("🚀 Powered by Google Gemini")
     
+    # 1. 获取 Key
     env_key = os.environ.get("GEMINI_API_KEY")
     if env_key:
         api_key = env_key
         st.success("✅ Gemini Key 已注入")
     else:
         api_key = st.text_input("请输入 Gemini Key", type="password")
+    
+    st.markdown("---")
+    # 🌟 关键修改：让用户自己选模型，防止 404 🌟
+    model_name = st.selectbox(
+        "🔮 选择 AI 模型",
+        ["gemini-1.5-flash", "gemini-pro", "gemini-1.5-pro-latest", "gemini-1.0-pro"],
+        index=0,
+        help="如果 Flash 报错 404，请尝试切换到 gemini-pro"
+    )
 
 st.title("🚑 币圈交易诊所")
-st.markdown("支持 **币安/OKX/Bitget** (已启用 Gemini 直连模式)")
+st.markdown(f"当前使用的 AI 大脑：**{model_name}**")
 
-# --- 核心逻辑 ---
+# --- 核心数据逻辑 ---
 def process_data(file):
     try:
         df = pd.read_csv(file)
@@ -63,13 +73,13 @@ def process_data(file):
         st.error(f"❌ 解析出错: {e}")
         return None
 
-# 🌟 重点修改：完全不依赖 Google SDK，手写请求 🌟
-def get_ai_comment(stats, key):
+# --- AI 调用逻辑 (动态模型名) ---
+def get_ai_comment(stats, key, model):
     if not key: return "请配置 Key。"
     
     clean_key = key.strip()
-    # 直接访问 API 地址
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
+    # 动态拼接 URL
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={clean_key}"
     
     headers = {'Content-Type': 'application/json'}
     
@@ -86,13 +96,13 @@ def get_ai_comment(stats, key):
     }
     
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
         
         if response.status_code == 200:
-            # 解析 Google 返回的 JSON
             return response.json()['candidates'][0]['content']['parts'][0]['text']
         else:
-            return f"Gemini 报错 ({response.status_code}): {response.text}"
+            # 返回详细报错，方便排查
+            return f"AI 报错 ({response.status_code}): {response.text}"
             
     except Exception as e:
         return f"网络请求报错: {e}"
@@ -117,9 +127,9 @@ if uploaded_file:
         c3.metric("🎯 胜率", f"{stats['win_rate']:.1f}%")
         
         st.divider()
-        if st.button("开始 Gemini 诊断"):
+        if st.button(f"开始 AI 诊断 ({model_name})"):
             with st.spinner("AI 正在思考..."):
-                st.info(get_ai_comment(stats, api_key))
+                st.info(get_ai_comment(stats, api_key, model_name))
         
         if 'Time' in df.columns:
             df = df.sort_values('Time')
