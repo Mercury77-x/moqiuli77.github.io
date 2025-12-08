@@ -49,9 +49,15 @@ with st.sidebar:
     else:
         api_key = st.text_input("输入 Gemini Key", type="password")
     
+
     model_name = st.selectbox(
         "🔮 AI 模型",
-        ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite"],
+        [
+            "gemini-flash-latest",     # 👈 对应你的第22行，这通常就是 1.5 Flash
+            "gemini-pro-latest",       # 👈 对应你的第24行，这是 1.5 Pro
+            "gemini-2.0-flash-lite",   # 👈 你的第8行，也许这个有额度？可以试试
+            "gemini-2.0-flash"         # 👈 这个你没额度，放最后
+        ],
         index=0
     )
 
